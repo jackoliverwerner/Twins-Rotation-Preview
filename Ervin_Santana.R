@@ -4,11 +4,18 @@
 
 library(plyr)
 library(dplyr)
+library(tidyr)
 library(ggplot2)
-library(rgl)
+#library(rgl)
 
-#setwd("C:/Users/jack.werner1/Documents/BB")
-setwd("/Users/jackwerner/Documents/My Stuff/Baseball/Scraping Files")
+twins_blue <- "#0C2341"
+twins_red <- "#BA0C2E"
+twins_gold <- "#CFAB7A"
+
+colors_vec <- c("FF" = twins_blue, "SL" = twins_red, "CH" = twins_gold)
+
+setwd("C:/Users/jack.werner1/Documents/BB")
+#setwd("/Users/jackwerner/Documents/My Stuff/Baseball/Scraping Files")
 
 # Read data
 pitch <- read.csv(file = "pitch_data_2016.csv") #%>% filter(pitcher == 429722)
@@ -164,10 +171,12 @@ tables %>% filter(b_hand == "L") %>% as.data.frame()
 
 ervin$simple_pitch_type <- factor(ervin$simple_pitch_type, levels = c("SL", "CH", "FF"))
 
-ggplot(data = ervin, aes(b_hand, fill = simple_pitch_type)) + facet_grid(strikes~balls) + geom_bar(position = "fill")
+ggplot(data = ervin, aes(b_hand, fill = simple_pitch_type)) + facet_grid(strikes~balls) + 
+  geom_bar(position = "fill") + scale_fill_manual(values = colors_vec)
 
 
-ggplot(data = filter(ervin, b_hand == "L"), aes(b_hand, fill = simple_pitch_type)) + facet_grid(strikes~balls) + geom_bar(position = "fill")
+ggplot(data = filter(ervin, b_hand == "R"), aes(b_hand, fill = simple_pitch_type)) + facet_grid(strikes~balls) + 
+  geom_bar(position = "fill") + scale_fill_manual(values = colors_vec)
 
 
 ########################
@@ -184,9 +193,9 @@ ggplot(data = filter(ervin, pitch_result %in% c("Ball", "Ball In Dirt", "Called 
   coord_fixed()
 
 
-# By pitch type
+# By pitch type MAYBE ARTICLE
 ggplot(data = ervin, aes(px, pz)) + geom_point(color = "red", alpha = .4) +
-  facet_wrap(~simple_pitch_type) +
+  facet_grid(b_hand~simple_pitch_type) +
   geom_polygon(data = strike.zone, aes(x = x, y = y, color = NA), fill = NA, color = "black") +
   coord_fixed()
 
@@ -203,6 +212,14 @@ ggplot(data = ervin, aes(px, pz, color = simple_pitch_type)) +
 
 ##### Individual Counts ######
 
+# 0-2 count by type, hand ARTICLE
+ggplot(data = filter(ervin, count == "0-2"), aes(px, pz, color = simple_pitch_type)) + 
+  facet_wrap(~b_hand) +
+  geom_point(size = 2) +
+  geom_polygon(data = strike.zone, aes(x = x, y = y, color = NA), fill = NA, color = "black") +
+  coord_fixed() +
+  scale_color_manual(values = c("FF" = twins_blue, "SL" = twins_red))
+
 # 0-2 count by type, result, hand
 ggplot(data = filter(ervin, count == "0-2"), aes(px, pz, color = pitch_ab_res)) + 
   facet_grid(b_hand~simple_pitch_type) +
@@ -213,6 +230,22 @@ ggplot(data = filter(ervin, count == "0-2"), aes(px, pz, color = pitch_ab_res)) 
 
 (tab.02 <- table(ervin$simple_pitch_type[ervin$count == "0-2"], ervin$b_hand[ervin$count == "0-2"]))
 prop.table(tab.02, 2)
+
+
+# 1-2 count by type, hand ARTICLE
+ggplot(data = filter(ervin, count == "1-2"), aes(px, pz, color = simple_pitch_type)) + 
+  facet_wrap(~b_hand) +
+  geom_point(size = 2) +
+  geom_polygon(data = strike.zone, aes(x = x, y = y, color = NA), fill = NA, color = "black") +
+  coord_fixed() +
+  scale_color_manual(values = colors_vec)
+
+ggplot(data = filter(ervin, count == "1-2"), aes(px, pz, fill = simple_pitch_type)) + 
+  facet_wrap(~b_hand) +
+  geom_point(size = 3, color = "black", shape = 21) +
+  geom_polygon(data = strike.zone, aes(x = x, y = y, color = NA), fill = NA, color = "black") +
+  coord_fixed() +
+  scale_fill_manual(values = colors_vec)
 
 # 1-2 count by type, result, hand
 ggplot(data = filter(ervin, count == "1-2"), aes(px, pz, color = pitch_ab_res)) + 
@@ -225,7 +258,7 @@ ggplot(data = filter(ervin, count == "1-2"), aes(px, pz, color = pitch_ab_res)) 
 (tab.12 <- table(ervin$simple_pitch_type[ervin$count == "1-2"], ervin$b_hand[ervin$count == "1-2"]))
 prop.table(tab.12, 2)
 
-# 2 strikes by count, hand, type
+# 2 strikes by count, hand, type ARTICLE
 ggplot(data = filter(ervin, strikes == 2), aes(px, pz, color = simple_pitch_type)) + 
   facet_grid(b_hand~balls) +
   geom_point(size = 2) +
@@ -241,6 +274,10 @@ ggplot(data = ervin, aes(px, pz)) +
 
 
 # How did Ervin get strikeouts?
+table(ervin$simple_pitch_type[ervin$strikes == 2])/sum(ervin$strikes == 2)
+table(ervin$simple_pitch_type[ervin$last & ervin$simple_event == "K"])/sum(ervin$last & ervin$simple_event == "K")
+
+
 table(ervin$simple_pitch_type[ervin$last & ervin$simple_event == "K"])
 table(ervin$count[ervin$last & ervin$simple_event == "K"],
       ervin$simple_pitch_type[ervin$last & ervin$simple_event == "K"])
@@ -256,6 +293,7 @@ table(ervin$count[ervin$last & ervin$simple_event == "K"],
 ervin.seq <- ervin %>% group_by(gid, ab_num) %>%
   mutate(prev_count = lag(count, 1, default = "None"),
          prev_pitch = lag(as.character(simple_pitch_type), 1, default = "None"),
+         back_2 = lag(as.character(simple_pitch_type), 2, default = "None"),
          next_pitch = lead(as.character(simple_pitch_type), 1, default = "None"),
          pitch_num = 1:n()) %>%
   ungroup()
@@ -264,7 +302,7 @@ ervin.seq <- ervin %>% group_by(gid, ab_num) %>%
 ervin.seq %>% select(pitch_result, prev_pitch, simple_pitch_type, next_pitch) %>% View()
 
 
-table(ervin.seq$simple_pitch_type, ervin.seq$prev_pitch) %>% prop.table(1)
+table(ervin.seq$prev_pitch, ervin.seq$simple_pitch_type) %>% prop.table(1)
 
 
 ##### Individual Counts #####
@@ -308,10 +346,23 @@ table(ervin.seq$prev_pitch[ervin$count == "1-2"],
 ggplot(data = filter(ervin.seq, count == "1-2"), aes(x = b_hand, fill = simple_pitch_type)) +
   facet_grid(prev_count~prev_pitch) + geom_bar(position = "fill")
 
-# He throws changeups after fouled off pitches
+# ASIDE: Fouled off pitches
+# He throws changeups after fouled off pitches ARTICLE
+
+ggplot(data = filter(ervin.seq, count == prev_count, b_hand == "L"), aes(x = b_hand, fill = simple_pitch_type)) +
+  facet_grid(prev_count~prev_pitch) + geom_bar(position = "fill")
+
 table((ervin.seq$prev_count == "1-2")[ervin.seq$count == "1-2"],
       (ervin.seq$simple_pitch_type == "CH")[ervin.seq$count == "1-2"]) %>%
   prop.table(c(1))
+
+ggplot(data = filter(ervin.seq, count == prev_count, b_hand == "R", prev_pitch != "CH"), aes(x = b_hand, fill = simple_pitch_type)) +
+  facet_grid(prev_count~prev_pitch) + geom_bar(position = "fill")
+
+
+# ARTICLE
+table(ervin.seq$prev_pitch[ervin.seq$count == ervin.seq$prev_count & ervin.seq$b_hand == "R"],
+      ervin.seq$simple_pitch_type[ervin.seq$count == ervin.seq$prev_count & ervin.seq$b_hand == "R"])
 
 
 # 2-2 count
@@ -321,8 +372,8 @@ ggplot(data = filter(ervin.seq, count == "2-2"), aes(px, pz, color = simple_pitc
   geom_polygon(data = strike.zone, aes(x = x, y = y, color = NA), fill = NA, color = "black") +
   coord_fixed()
 
-table(ervin.seq$prev_pitch[ervin$count == "2-2"],
-      ervin.seq$simple_pitch_type[ervin$count == "1-2"]) %>%
+table(ervin.seq$prev_pitch[ervin.seq$count == "2-2"],
+      ervin.seq$simple_pitch_type[ervin.seq$count == "2-2"]) %>%
   prop.table(1)
 
 table(ervin.seq$prev_pitch[ervin$count == "2-2"],
@@ -332,6 +383,9 @@ table(ervin.seq$prev_pitch[ervin$count == "2-2"],
 
 ggplot(data = filter(ervin.seq, count == "2-2"), aes(x = b_hand, fill = simple_pitch_type)) +
   facet_grid(prev_count~prev_pitch) + geom_bar(position = "fill")
+
+
+
 
 
 # 3-2 count
@@ -360,6 +414,47 @@ ggplot(data = filter(ervin.seq, count %in% c("1-0", "0-1")), aes(x = b_hand, fil
   facet_grid(count~prev_pitch) + geom_bar(position = "fill")
 
 
+#############
+# By inning #
+#############
+
+table(ervin$simple_pitch_type, ervin$inning, ervin$b_hand) %>% prop.table(c(2, 3))
+
+inning.df <- ervin %>% group_by(inning) %>% 
+  summarize(Fastball = sum(simple_pitch_type == "FF")/n(),
+            Slider = sum(simple_pitch_type == "SL")/n(),
+            Changeup = sum(simple_pitch_type == "CH")/n(),
+            Total = n()) %>%
+  ungroup() %>%
+  gather(key = Pitch, value = Frequency, Fastball, Slider, Changeup)
+
+ggplot(data = filter(inning.df, inning <= 7), aes(x = inning, y = Frequency, color = Pitch)) + geom_line() + geom_point()
+
+inning.df <- ervin %>% group_by(gid) %>% 
+  mutate(into_seventh = any(inning >= 6)) %>% filter(into_seventh) %>%
+  ungroup() %>% group_by(inning) %>% 
+  summarize(Fastball = sum(simple_pitch_type == "FF")/n(),
+            Slider = sum(simple_pitch_type == "SL")/n(),
+            Changeup = sum(simple_pitch_type == "CH")/n(),
+            Total = n()) %>%
+  ungroup() %>%
+  gather(key = Pitch, value = Frequency, Fastball, Slider, Changeup)
+
+ggplot(data = filter(inning.df, inning <= 7), aes(x = inning, y = Frequency, color = Pitch)) + 
+  geom_line() + geom_point()
+
+
+##################
+# By baserunners #
+##################
+
+ervin_b <- ervin %>% mutate(baserunner = !is.na(runner_1) | !is.na(runner_2) | !is.na(runner_3),
+                            on_third = !is.na(runner_3),
+                            on_second = !is.na(runner_2))
+
+table(ervin_b$baserunner, ervin_b$simple_pitch_type) %>% prop.table(1)
+table(ervin_b$on_third, ervin_b$simple_pitch_type) %>% prop.table(1)
+table(ervin_b$on_second, ervin_b$simple_pitch_type) %>% prop.table(1)
 
 #################
 # Pitch strings #
@@ -426,13 +521,21 @@ for (j in 1:100) {
 
 seqs.df <- data.frame(pattern = c(all.duos, all.trios), 
                       freq = c(duos.freq, trios.freq), 
-                      exp = apply(rand.freqs, 1, mean))
+                      exp = apply(rand.freqs, 1, mean)) %>%
+  mutate(p_diff = (freq - exp)/exp)
 
+duos.df <- seqs.df[1:9,]
+trios.df <- seqs.df[10:nrow(seqs.df),]
 
-ggplot(data = seqs.df[1:9,], aes(x = exp, y = freq, label = pattern)) + 
+ggplot(data = duos.df, aes(x = exp, y = freq, label = pattern)) + 
   geom_text() + 
   geom_abline(slope = 1, intercept = 0, color = "red")
 
-ggplot(data = seqs.df[10:nrow(seqs.df),], aes(x = exp, y = freq, label = pattern)) + 
+ggplot(data = trios.df, aes(x = exp, y = freq, label = pattern)) + 
   geom_text() + 
   geom_abline(slope = 1, intercept = 0, color = "red")
+
+ggplot(data = filter(duos.df, exp > 100), aes(x = reorder(pattern, -p_diff), y = p_diff)) + 
+  geom_bar(stat = "identity", fill = twins_blue, color = twins_gold, size = 1) + theme_minimal()
+ggplot(data = filter(trios.df, exp > 100), aes(x = reorder(pattern, -p_diff), y = p_diff)) + geom_bar(stat = "identity")
+
