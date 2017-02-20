@@ -5,9 +5,10 @@
 library(plyr)
 library(dplyr)
 library(ggplot2)
+library(rgl)
 
-setwd("C:/Users/jack.werner1/Documents/BB")
-#setwd("/Users/jackwerner/Documents/My Stuff/Baseball/Scraping Files")
+#setwd("C:/Users/jack.werner1/Documents/BB")
+setwd("/Users/jackwerner/Documents/My Stuff/Baseball/Scraping Files")
 
 # Read data
 pitch <- read.csv(file = "pitch_data_2016.csv") #%>% filter(pitcher == 429722)
@@ -141,7 +142,12 @@ ggplot(data = ervin, aes(start_speed, pfx_z, color = cluster_type, size = mismat
 ggplot(data = ervin, aes(start_speed, pfx_z, color = mismatch)) + geom_point() +
   scale_color_manual(values = c("red", "grey70"))
 
+# 3d Plot
+colors <- ifelse(ervin$simple_pitch_type == "FF", "red",
+                 ifelse(ervin$simple_pitch_type == "SL", "green", "blue"))
 
+plot3d(ervin$px, ervin$pz, ervin$start_speed, col = colors,
+       xlab = "x", ylab = "z", zlab = "Velocity")
 ###############################
 # Pitches by count/handedness #
 ###############################
@@ -161,6 +167,7 @@ ervin$simple_pitch_type <- factor(ervin$simple_pitch_type, levels = c("SL", "CH"
 ggplot(data = ervin, aes(b_hand, fill = simple_pitch_type)) + facet_grid(strikes~balls) + geom_bar(position = "fill")
 
 
+ggplot(data = filter(ervin, b_hand == "L"), aes(b_hand, fill = simple_pitch_type)) + facet_grid(strikes~balls) + geom_bar(position = "fill")
 
 
 ########################
@@ -171,7 +178,7 @@ strike.zone <- data.frame(x = c(17/24, 17/24, -17/24, -17/24, 17/24), y = c(1.58
 
 # Strike zone
 ggplot(data = filter(ervin, pitch_result %in% c("Ball", "Ball In Dirt", "Called Strike")), 
-                     aes(px, pz, color = type)) + 
+       aes(px, pz, color = type)) + 
   geom_point() +
   geom_polygon(data = strike.zone, aes(x = x, y = y, color = NA), fill = NA, color = "black") +
   coord_fixed()
@@ -429,5 +436,3 @@ ggplot(data = seqs.df[1:9,], aes(x = exp, y = freq, label = pattern)) +
 ggplot(data = seqs.df[10:nrow(seqs.df),], aes(x = exp, y = freq, label = pattern)) + 
   geom_text() + 
   geom_abline(slope = 1, intercept = 0, color = "red")
-
-
