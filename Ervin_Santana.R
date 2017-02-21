@@ -14,8 +14,8 @@ twins_gold <- "#CFAB7A"
 
 colors_vec <- c("FF" = twins_blue, "SL" = twins_red, "CH" = twins_gold)
 
-setwd("C:/Users/jack.werner1/Documents/BB")
-#setwd("/Users/jackwerner/Documents/My Stuff/Baseball/Scraping Files")
+#setwd("C:/Users/jack.werner1/Documents/BB")
+setwd("/Users/jackwerner/Documents/My Stuff/Baseball/Scraping Files")
 
 # Read data
 pitch <- read.csv(file = "pitch_data_2016.csv") #%>% filter(pitcher == 429722)
@@ -217,8 +217,11 @@ ggplot(data = filter(ervin, count == "0-2"), aes(px, pz, color = simple_pitch_ty
   facet_wrap(~b_hand) +
   geom_point(size = 2) +
   geom_polygon(data = strike.zone, aes(x = x, y = y, color = NA), fill = NA, color = "black") +
-  coord_fixed() +
-  scale_color_manual(values = c("FF" = twins_blue, "SL" = twins_red))
+  coord_fixed(xlim = c(min(ervin$px), max(ervin$px)), ylim = c(min(ervin$pz), max(ervin$pz))) + 
+  labs(x = "Horizontal Position", y = "Vertical Position", 
+                       title = "0-2 Pitches", color = "Pitch") +
+  theme(plot.title = element_text(family = "Trebuchet MS", color="#666666", face="bold", size=26, hjust=0)) +
+  theme(axis.title = element_text(family = "Trebuchet MS", color="#666666", face="bold", size=14))
 
 # 0-2 count by type, result, hand
 ggplot(data = filter(ervin, count == "0-2"), aes(px, pz, color = pitch_ab_res)) + 
@@ -237,8 +240,12 @@ ggplot(data = filter(ervin, count == "1-2"), aes(px, pz, color = simple_pitch_ty
   facet_wrap(~b_hand) +
   geom_point(size = 2) +
   geom_polygon(data = strike.zone, aes(x = x, y = y, color = NA), fill = NA, color = "black") +
-  coord_fixed() +
-  scale_color_manual(values = colors_vec)
+  coord_fixed(xlim = c(min(ervin$px), max(ervin$px)), ylim = c(min(ervin$pz), max(ervin$pz))) + 
+  labs(x = "Horizontal Position", y = "Vertical Position", 
+       title = "1-2 Pitches", color = "Pitch") +
+  theme(plot.title = element_text(family = "Trebuchet MS", color="#666666", face="bold", size=26, hjust=0)) +
+  theme(axis.title = element_text(family = "Trebuchet MS", color="#666666", face="bold", size=14))
+
 
 ggplot(data = filter(ervin, count == "1-2"), aes(px, pz, fill = simple_pitch_type)) + 
   facet_wrap(~b_hand) +
@@ -261,7 +268,7 @@ prop.table(tab.12, 2)
 # 2 strikes by count, hand, type ARTICLE
 ggplot(data = filter(ervin, strikes == 2), aes(px, pz, color = simple_pitch_type)) + 
   facet_grid(b_hand~balls) +
-  geom_point(size = 2) +
+  geom_point(size = 1) +
   geom_polygon(data = strike.zone, aes(x = x, y = y, color = NA), fill = NA, color = "black") +
   coord_fixed()
 
@@ -356,6 +363,10 @@ table((ervin.seq$prev_count == "1-2")[ervin.seq$count == "1-2"],
       (ervin.seq$simple_pitch_type == "CH")[ervin.seq$count == "1-2"]) %>%
   prop.table(c(1))
 
+table((ervin.seq$count == ervin.seq$prev_count)[ervin.seq$strikes == 2 & ervin.seq$balls < 2],
+      (ervin.seq$simple_pitch_type == "CH")[ervin.seq$strikes == 2 & ervin.seq$balls < 2]) %>%
+  prop.table(c(1))
+
 ggplot(data = filter(ervin.seq, count == prev_count, b_hand == "R", prev_pitch != "CH"), aes(x = b_hand, fill = simple_pitch_type)) +
   facet_grid(prev_count~prev_pitch) + geom_bar(position = "fill")
 
@@ -428,7 +439,13 @@ inning.df <- ervin %>% group_by(inning) %>%
   ungroup() %>%
   gather(key = Pitch, value = Frequency, Fastball, Slider, Changeup)
 
-ggplot(data = filter(inning.df, inning <= 7), aes(x = inning, y = Frequency, color = Pitch)) + geom_line() + geom_point()
+ggplot(data = filter(inning.df, inning <= 7), aes(x = inning, y = Frequency, color = Pitch)) + 
+  geom_line(size = 2) + geom_point(size = 4) + 
+  labs(x = "Inning", y = "Frequency", 
+       title = "Pitch Type by Inning", color = "Pitch") +
+  theme(plot.title = element_text(family = "Trebuchet MS", color="#666666", face="bold", size=26, hjust=0)) +
+  theme(axis.title = element_text(family = "Trebuchet MS", color="#666666", face="bold", size=14))
+
 
 inning.df <- ervin %>% group_by(gid) %>% 
   mutate(into_seventh = any(inning >= 6)) %>% filter(into_seventh) %>%
