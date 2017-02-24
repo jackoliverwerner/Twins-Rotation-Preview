@@ -1,3 +1,5 @@
+# Plots found in the article are commented with "ARTICLE"
+
 ############
 # Preamble #
 ############
@@ -6,7 +8,7 @@ library(plyr)
 library(dplyr)
 library(tidyr)
 library(ggplot2)
-#library(rgl)
+library(rgl)
 
 twins_blue <- "#0C2341"
 twins_red <- "#BA0C2E"
@@ -193,7 +195,7 @@ ggplot(data = filter(ervin, pitch_result %in% c("Ball", "Ball In Dirt", "Called 
   coord_fixed()
 
 
-# By pitch type MAYBE ARTICLE
+# By pitch type
 ggplot(data = ervin, aes(px, pz)) + geom_point(color = "red", alpha = .4) +
   facet_grid(b_hand~simple_pitch_type) +
   geom_polygon(data = strike.zone, aes(x = x, y = y, color = NA), fill = NA, color = "black") +
@@ -215,13 +217,18 @@ ggplot(data = ervin, aes(px, pz, color = simple_pitch_type)) +
 # 0-2 count by type, hand ARTICLE
 ggplot(data = filter(ervin, count == "0-2"), aes(px, pz, color = simple_pitch_type)) + 
   facet_wrap(~b_hand) +
-  geom_point(size = 2) +
+  geom_point(size = 3) +
   geom_polygon(data = strike.zone, aes(x = x, y = y, color = NA), fill = NA, color = "black") +
   coord_fixed(xlim = c(min(ervin$px), max(ervin$px)), ylim = c(min(ervin$pz), max(ervin$pz))) + 
   labs(x = "Horizontal Position", y = "Vertical Position", 
                        title = "0-2 Pitches", color = "Pitch") +
-  theme(plot.title = element_text(family = "Trebuchet MS", color="#666666", face="bold", size=26, hjust=0)) +
-  theme(axis.title = element_text(family = "Trebuchet MS", color="#666666", face="bold", size=14))
+  scale_color_manual(values = c("FF" = "#e41a1c", "SL" = "#377eb8"),
+                     labels = c("Slider", "Fastball")) +
+  theme(legend.position = "bottom",
+        legend.title = element_text(family = "Trebuchet MS", color="#666666", face="bold", size=15),
+        legend.text = element_text(family = "Trebuchet MS", color="#666666", face="bold", size=12),
+        plot.title = element_text(family = "Trebuchet MS", color="#666666", face="bold", size=30, hjust=0),
+        axis.title = element_text(family = "Trebuchet MS", color="#666666", face="bold", size=20))
 
 # 0-2 count by type, result, hand
 ggplot(data = filter(ervin, count == "0-2"), aes(px, pz, color = pitch_ab_res)) + 
@@ -238,13 +245,18 @@ prop.table(tab.02, 2)
 # 1-2 count by type, hand ARTICLE
 ggplot(data = filter(ervin, count == "1-2"), aes(px, pz, color = simple_pitch_type)) + 
   facet_wrap(~b_hand) +
-  geom_point(size = 2) +
+  geom_point(size = 3) +
   geom_polygon(data = strike.zone, aes(x = x, y = y, color = NA), fill = NA, color = "black") +
   coord_fixed(xlim = c(min(ervin$px), max(ervin$px)), ylim = c(min(ervin$pz), max(ervin$pz))) + 
+  scale_color_manual(values = c("FF" = "#e41a1c", "SL" = "#377eb8", "CH" = "#4daf4a"),
+                     labels = c("Slider", "Changeup", "Fastball")) +
   labs(x = "Horizontal Position", y = "Vertical Position", 
        title = "1-2 Pitches", color = "Pitch") +
-  theme(plot.title = element_text(family = "Trebuchet MS", color="#666666", face="bold", size=26, hjust=0)) +
-  theme(axis.title = element_text(family = "Trebuchet MS", color="#666666", face="bold", size=14))
+  theme(legend.position = "bottom",
+        legend.title = element_text(family = "Trebuchet MS", color="#666666", face="bold", size=15),
+        legend.text = element_text(family = "Trebuchet MS", color="#666666", face="bold", size=12),
+        plot.title = element_text(family = "Trebuchet MS", color="#666666", face="bold", size=30, hjust=0),
+        axis.title = element_text(family = "Trebuchet MS", color="#666666", face="bold", size=20))
 
 
 ggplot(data = filter(ervin, count == "1-2"), aes(px, pz, fill = simple_pitch_type)) + 
@@ -354,7 +366,6 @@ ggplot(data = filter(ervin.seq, count == "1-2"), aes(x = b_hand, fill = simple_p
   facet_grid(prev_count~prev_pitch) + geom_bar(position = "fill")
 
 # ASIDE: Fouled off pitches
-# He throws changeups after fouled off pitches ARTICLE
 
 ggplot(data = filter(ervin.seq, count == prev_count, b_hand == "L"), aes(x = b_hand, fill = simple_pitch_type)) +
   facet_grid(prev_count~prev_pitch) + geom_bar(position = "fill")
@@ -370,8 +381,6 @@ table((ervin.seq$count == ervin.seq$prev_count)[ervin.seq$strikes == 2 & ervin.s
 ggplot(data = filter(ervin.seq, count == prev_count, b_hand == "R", prev_pitch != "CH"), aes(x = b_hand, fill = simple_pitch_type)) +
   facet_grid(prev_count~prev_pitch) + geom_bar(position = "fill")
 
-
-# ARTICLE
 table(ervin.seq$prev_pitch[ervin.seq$count == ervin.seq$prev_count & ervin.seq$b_hand == "R"],
       ervin.seq$simple_pitch_type[ervin.seq$count == ervin.seq$prev_count & ervin.seq$b_hand == "R"])
 
@@ -441,10 +450,18 @@ inning.df <- ervin %>% group_by(inning) %>%
 
 ggplot(data = filter(inning.df, inning <= 7), aes(x = inning, y = Frequency, color = Pitch)) + 
   geom_line(size = 2) + geom_point(size = 4) + 
+  coord_cartesian(ylim = c(0, .75)) + 
   labs(x = "Inning", y = "Frequency", 
        title = "Pitch Type by Inning", color = "Pitch") +
-  theme(plot.title = element_text(family = "Trebuchet MS", color="#666666", face="bold", size=26, hjust=0)) +
-  theme(axis.title = element_text(family = "Trebuchet MS", color="#666666", face="bold", size=14))
+  scale_color_manual(values = c("Fastball" = "#e41a1c", "Slider" = "#377eb8", "Changeup" = "#4daf4a")) +
+  scale_x_continuous(breaks = 1:9) +
+  theme(#legend.position = "bottom",
+        legend.title = element_text(family = "Trebuchet MS", color="#666666", face="bold", size=15),
+        legend.text = element_text(family = "Trebuchet MS", color="#666666", face="bold", size=12),
+        plot.title = element_text(family = "Trebuchet MS", color="#666666", face="bold", size=30, hjust=0),
+        axis.title = element_text(family = "Trebuchet MS", color="#666666", face="bold", size=20),
+        axis.text.y = element_text(family = "Trebuchet MS", color = "#666666", size = 15),
+        axis.text.x = element_text(family = "Trebuchet MS", color = "#666666", size = 15))
 
 
 inning.df <- ervin %>% group_by(gid) %>% 
