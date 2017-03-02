@@ -8,7 +8,7 @@ library(plyr)
 library(dplyr)
 library(tidyr)
 library(ggplot2)
-library(rgl)
+#library(rgl)
 
 twins_blue <- "#0C2341"
 twins_red <- "#BA0C2E"
