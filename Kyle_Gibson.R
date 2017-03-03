@@ -4,6 +4,7 @@
 
 library(plyr)
 library(dplyr)
+library(tidyr)
 library(ggplot2)
 
 setwd("C:/Users/jack.werner1/Documents/BB")
@@ -87,53 +88,8 @@ ggplot(data = kyle, aes(start_speed)) + facet_grid(simple_pitch_type~.) + geom_h
 ggplot(data = kyle, aes(start_speed, fill = simple_pitch_type)) + 
   geom_density(alpha = .5, color = "grey50", size = 1)
 
+kyle$simple_pitch_type <- factor(kyle$simple_pitch_type, levels = c("CU", "CH", "SL", "FT", "FF"))
 
-# Try getting pitch types through clustering
-
-kyle.mat <- kyle %>% select(pfx_x, pfx_z, start_speed) %>% as.matrix() %>% scale()
-
-kyle$cluster <- kmeans(kyle.mat, centers = 5)$cluster
-
-(clust.tab <- table(kyle$cluster, kyle$simple_pitch_type))
-
-conv.df <- data.frame(cluster = as.numeric(as.character(rownames(clust.tab))), 
-                      cluster_type = colnames(clust.tab)[apply(clust.tab, 1, which.max)])
-
-kyle <- kyle %>% left_join(conv.df, by = "cluster")
-
-kyle <- kyle %>% mutate(mismatch = simple_pitch_type == cluster_type)
-
-# Look at groups by break
-ggplot(data = kyle, aes(pfx_x, pfx_z, color = simple_pitch_type, size = mismatch)) + geom_point() +
-  scale_size_manual(values = c(2, 1)) +
-  ggtitle("Colored by Pitchf/x")
-
-ggplot(data = kyle, aes(pfx_x, pfx_z, color = cluster_type, size = mismatch)) + geom_point() +
-  scale_size_manual(values = c(2, 1)) +
-  ggtitle("Colored by Cluster")
-
-ggplot(data = kyle, aes(pfx_x, pfx_z, color = mismatch)) + geom_point() +
-  scale_color_manual(values = c("red", "grey70"))
-
-
-# Look at groups by velocity
-ggplot(data = kyle, aes(start_speed, pfx_z, color = simple_pitch_type, size = mismatch)) + geom_point() +
-  scale_size_manual(values = c(2, 1)) +
-  ggtitle("Colored by Pitchf/x")
-
-ggplot(data = kyle, aes(start_speed, pfx_z, color = cluster_type, size = mismatch)) + geom_point() +
-  scale_size_manual(values = c(2, 1)) +
-  ggtitle("Colored by Cluster")
-
-ggplot(data = kyle, aes(start_speed, pfx_z, color = mismatch)) + geom_point() +
-  scale_color_manual(values = c("red", "grey70"))
-
-# 3d Plot
-colors <- ifelse(kyle$simple_pitch_type == "FF", "red",
-                 ifelse(kyle$simple_pitch_type == "SL", "green", "blue"))
-
-plot3d(kyle$px, kyle$pz, kyle$start_speed, col = colors,
-       xlab = "x", ylab = "z", zlab = "Velocity")
 
 ###############################
 # Pitches by count/handedness #
@@ -141,251 +97,230 @@ plot3d(kyle$px, kyle$pz, kyle$start_speed, col = colors,
 
 table(kyle$b_hand, kyle$simple_pitch_type) %>% prop.table(1)
 
-tables <- kyle %>% group_by(count, balls, strikes, b_hand) %>%
-  summarize(FF = sum(simple_pitch_type == "FF"),
-            FT = sum(simple_pitch_type == "FT"),
-            SL = sum(simple_pitch_type == "SL"),
-            CH = sum(simple_pitch_type == "CH"),
-            CU = sum(simple_pitch_type == "CU"),
-            FF_p = FF/n(), FT_p = FT/n(), SL_p = SL/n(), 
-            CH_p = CH/n(), CU_p = CU/n(),  total = n()) %>%
-  ungroup()
-
-tables %>% filter(b_hand == "R") %>% as.data.frame()
-tables %>% filter(b_hand == "L") %>% as.data.frame()
-
-kyle$simple_pitch_type <- factor(kyle$simple_pitch_type, levels = c("CU", "CH", "SL", "FT", "FF"))
-
 ggplot(data = kyle, aes(b_hand, fill = simple_pitch_type)) + facet_grid(strikes~balls) + 
-  geom_bar(position = "fill") + scale_fill_manual(values = c("yellow", "orange", "red", "lightblue", "darkblue"))
-
-
-ggplot(data = filter(kyle, b_hand == "R"), aes(b_hand, fill = simple_pitch_type)) + facet_grid(strikes~balls) + 
-  geom_bar(position = "fill") + scale_fill_manual(values = c("yellow", "orange", "red", "lightblue", "darkblue"))
-
-
-########################
-# Pitch Location Plots #
-########################
+  geom_bar(position = "fill") + 
+  scale_fill_manual(values = c("#12496D", "#1F78B4", "#A6CEE3", "#FB9A99", "#E31A1C"))
 
 strike.zone <- data.frame(x = c(17/24, 17/24, -17/24, -17/24, 17/24), y = c(1.5812, 3.4499, 3.4499, 1.5812, 1.5812))
 
-# Strike zone
-ggplot(data = filter(kyle, pitch_result %in% c("Ball", "Ball In Dirt", "Called Strike")), 
-       aes(px, pz, color = type)) + 
-  geom_point() +
-  geom_polygon(data = strike.zone, aes(x = x, y = y, color = NA), fill = NA, color = "black") +
-  coord_fixed()
+kyle$b_hand_lab = ifelse(kyle$b_hand == "L", "vs. LH", "vs. RH")
+
+############
+# Offspeed #
+############
+
+offspeed <- kyle %>% filter(simple_pitch_type %in% c("CH", "CU", "SL"))
+
+offspeed$count_cat <- factor(ifelse(offspeed$count %in% c("0-2", "1-2", "2-2"), "Ahead", "Not Ahead"),
+                             levels = c("Not Ahead", "Ahead"))
+
+offspeed$simple_pitch_type <- factor(offspeed$simple_pitch_type, levels = c("CH", "SL", "CU"))
+
+# Offspeed by count
+ggplot(data = offspeed, aes(b_hand, fill = simple_pitch_type)) + 
+  facet_grid(strikes~balls) + 
+  geom_bar(position = "fill")
+
+table(offspeed$simple_pitch_type[offspeed$balls < 3], 
+      ifelse(offspeed$strikes[offspeed$balls < 3] < 2, "Early", "Late"),
+      offspeed$b_hand[offspeed$balls < 3]) %>% 
+  prop.table(2)
 
 
-# By pitch type MAYBE ARTICLE
-ggplot(data = kyle, aes(px, pz)) + geom_point(color = "red", alpha = .4) +
-  facet_grid(b_hand~simple_pitch_type) +
-  geom_polygon(data = strike.zone, aes(x = x, y = y, color = NA), fill = NA, color = "black") +
-  coord_fixed()
-
-kyle <- kyle %>% mutate(k = simple_event == "K" & last,
-                          pitch_ab_res = ifelse(last, simple_event, "Cont."))
-
-# By count, type
-ggplot(data = kyle, aes(px, pz, color = simple_pitch_type)) + 
-  facet_grid(balls~strikes) +
-  geom_point(alpha = .4) +
-  geom_polygon(data = strike.zone, aes(x = x, y = y, color = NA), fill = NA, color = "black") +
-  coord_fixed()
-
-
-##### Individual Counts ######
-
-# 0-2 count by type, hand
-ggplot(data = filter(kyle, count == "0-2"), aes(px, pz, color = simple_pitch_type)) + 
-  facet_wrap(~b_hand) +
+ggplot(data = filter(offspeed, count_cat != "Behind"), aes(px, pz, color = simple_pitch_type)) + 
+  facet_grid(count_cat~b_hand_lab) +
   geom_point(size = 2) +
   geom_polygon(data = strike.zone, aes(x = x, y = y, color = NA), fill = NA, color = "black") +
-  coord_fixed()
+  coord_fixed() +
+  labs(x = "Horizontal Position", y = "Vertical Position", 
+       title = "Fastballs - Hitter's Count", color = "Pitch") +
+  theme(legend.position = "bottom",
+        legend.title = element_text(family = "Trebuchet MS", color="#666666", face="bold", size=15),
+        legend.text = element_text(family = "Trebuchet MS", color="#666666", face="bold", size=12),
+        plot.title = element_text(family = "Trebuchet MS", color="#666666", face="bold", size=30, hjust=0),
+        axis.title = element_text(family = "Trebuchet MS", color="#666666", face="bold", size=20),
+        strip.text = element_text(family = "Trebuchet MS", color="#666666", size=20))
 
-# 0-2 count by type, result, hand
-ggplot(data = filter(kyle, count == "0-2"), aes(px, pz, color = pitch_ab_res)) + 
-  facet_grid(b_hand~simple_pitch_type) +
+# ARTICLE
+ggplot(data = filter(offspeed),
+       aes(count_cat, fill = simple_pitch_type)) + 
+  facet_grid(.~b_hand_lab) + 
+  geom_bar(position = "fill") + 
+  scale_fill_manual(values = c("#12496D", "#1F78B4", "#A6CEE3"),
+                    labels = c("Changeup", "Slider", "Curveball")) +
+  coord_flip() +
+  labs(x = "", y = "Frequency",
+       title = "Offspeed Pitches", fill = "Pitch") +
+  theme(legend.position = "bottom",
+        legend.title = element_text(family = "Trebuchet MS", color="#666666", face="bold", size=15),
+        legend.text = element_text(family = "Trebuchet MS", color="#666666", face="bold", size=12),
+        plot.title = element_text(family = "Trebuchet MS", color="#666666", face="bold", size=30, hjust=0),
+        axis.title = element_text(family = "Trebuchet MS", color="#666666", face="bold", size=20),
+        axis.text.x = element_text(family = "Trebuchet MS", color="#666666", size=15),
+        axis.text.y = element_text(family = "Trebuchet MS", color="#666666", size=20),
+        strip.text = element_text(family = "Trebuchet MS", color="#666666", size=20))
+
+table(offspeed$count_cat, offspeed$simple_pitch_type, offspeed$b_hand) %>% prop.table(c(1, 3))
+
+table(kyle$simple_pitch_type == "SL", kyle$strikes == 2, kyle$b_hand) %>% prop.table(c(2, 3))
+
+###############
+# All Pitches #
+###############
+
+kyle$ahead <- ifelse(kyle$strikes >= kyle$balls, "Ahead", "Behind")
+kyle$count_cat <- factor(ifelse(kyle$count %in% c("0-2", "1-2", "2-2"), "Ahead", "Not Ahead"),
+                             levels = c("Not Ahead", "Ahead"))
+
+kyle$simple_pitch_type <- factor(kyle$simple_pitch_type, levels = c("CH", "CU", "SL", "FT", "FF"))
+
+# ARTICLE
+ggplot(data = kyle, aes(ahead, fill = simple_pitch_type)) + 
+  geom_bar(position = "fill") + 
+  #scale_fill_brewer(palette = "Paired")
+  scale_fill_manual(values = c("#12496D", "#1F78B4", "#A6CEE3", "#FB9A99", "#E31A1C"))
+
+# ARTICLE
+ggplot(data = filter(kyle, b_hand == "L"), aes(ahead, fill = simple_pitch_type)) + 
+  geom_bar(position = "fill") + 
+  #scale_fill_brewer(palette = "Paired")
+  scale_fill_manual(values = c("#12496D", "#1F78B4", "#A6CEE3", "#FB9A99", "#E31A1C"))
+
+table(kyle$simple_pitch_type,
+      ifelse(kyle$strikes >= kyle$balls, "Ahead", "Behind"), 
+      kyle$b_hand) %>%
+  prop.table(c(2, 3))
+
+table(kyle$simple_pitch_type,
+      ifelse(kyle$strikes >= kyle$balls, "Ahead", "Behind")) %>%
+  prop.table(2)
+
+
+ggplot(data = filter(offspeed, count_cat == "Ahead"), aes(px, pz, color = simple_pitch_type)) + 
+  #facet_grid(~b_hand) +
   geom_point(size = 2) +
   geom_polygon(data = strike.zone, aes(x = x, y = y, color = NA), fill = NA, color = "black") +
-  coord_fixed()
+  coord_fixed(ylim = c(0, 4)) +
+  scale_color_manual(values = c("#12496D", "#1F78B4", "#A6CEE3"),
+                     labels = c("Changeup", "Slider", "Curveball")) +
+  labs(x = "Horizontal Position", y = "Vertical Position", 
+       title = "Offspeed - Ahead In Count", color = "Pitch") +
+  theme(legend.position = "bottom",
+        legend.title = element_text(family = "Trebuchet MS", color="#666666", face="bold", size=15),
+        legend.text = element_text(family = "Trebuchet MS", color="#666666", face="bold", size=12),
+        plot.title = element_text(family = "Trebuchet MS", color="#666666", face="bold", size=30, hjust=0),
+        axis.title = element_text(family = "Trebuchet MS", color="#666666", face="bold", size=20),
+        strip.text = element_text(family = "Trebuchet MS", color="#666666", size=20))
 
-(tab.02 <- table(kyle$simple_pitch_type[kyle$count == "0-2"], kyle$b_hand[kyle$count == "0-2"]))
-prop.table(tab.02, 2)
 
 
-# Fastballs up
-kyle %>% filter(simple_pitch_type == "FF", count == "0-2", b_hand == "L") %>% View()
+#############
+# Fastballs #
+#############
 
-a <- kyle.seq %>% filter(prev_count %in% c("0-2", "1-2"), prev_pitch == "FF", b_hand == "L")
+# ARTICLE Fastballs ahead/behind
+ggplot(data = filter(kyle, simple_pitch_type %in% c("FF", "FT")), aes(ahead, fill = simple_pitch_type)) + 
+  geom_bar(position = "fill") + 
+  scale_fill_manual(values = c("#FB9A99", "#E31A1C"),
+                    labels = c("Two-Seam", "Four-Seam")) +
+  labs(x = "", y = "Frequency",
+       title = "Fastball Types", fill = "Pitch") +
+  scale_x_discrete(labels = c("Ahead in Count", "Behind in Count")) +
+  coord_flip() +
+  theme(legend.position = "bottom",
+        legend.title = element_text(family = "Trebuchet MS", color="#666666", face="bold", size=15),
+        legend.text = element_text(family = "Trebuchet MS", color="#666666", face="bold", size=12),
+        plot.title = element_text(family = "Trebuchet MS", color="#666666", face="bold", size=30, hjust=0),
+        axis.title = element_text(family = "Trebuchet MS", color="#666666", face="bold", size=20),
+        axis.text.x = element_text(family = "Trebuchet MS", color="#666666", size=15),
+        axis.text.y = element_text(family = "Trebuchet MS", color="#666666", size=20))
 
-ggplot(data = a, aes(x = px, y = pz, color = simple_pitch_type)) +
-  geom_point(size = 2) +
+# ARTICLE Fastballs ahead/behind left
+ggplot(data = filter(kyle, simple_pitch_type %in% c("FF", "FT"), b_hand == "L"), aes(ahead, fill = simple_pitch_type)) + 
+  geom_bar(position = "fill") + 
+  scale_fill_manual(values = c("#FB9A99", "#E31A1C"),
+                    labels = c("Two-Seam", "Four-Seam")) +
+  labs(x = "", y = "Frequency",
+       title = "Fastball Types - vs. Lefties", fill = "Pitch") +
+  coord_flip() +
+  scale_x_discrete(labels = c("Ahead in Count", "Behind in Count")) +
+  theme(legend.position = "bottom",
+        legend.title = element_text(family = "Trebuchet MS", color="#666666", face="bold", size=15),
+        legend.text = element_text(family = "Trebuchet MS", color="#666666", face="bold", size=12),
+        plot.title = element_text(family = "Trebuchet MS", color="#666666", face="bold", size=30, hjust=0),
+        axis.title = element_text(family = "Trebuchet MS", color="#666666", face="bold", size=20),
+        axis.text.x = element_text(family = "Trebuchet MS", color="#666666", size=15),
+        axis.text.y = element_text(family = "Trebuchet MS", color="#666666", size=20))
+
+# ARTICLE - Two-strike fastballs* location
+ggplot(data = filter(kyle, strikes == 2, balls < 3, simple_pitch_type %in% c("FF", "FT")),
+       aes(px, pz, color = simple_pitch_type)) +
+  facet_grid(.~b_hand_lab) +
+  geom_point(size = 3) +
   geom_polygon(data = strike.zone, aes(x = x, y = y, color = NA), fill = NA, color = "black") +
-  coord_fixed()
+  coord_fixed(ylim = c(0, 6), xlim = c(-2.2, 2.2)) +
+  scale_color_manual(values = c("#FB9A99", "#E31A1C"), 
+                     labels = c("Two-Seam", "Four-Seam")) +
+  labs(x = "Horizontal Position", y = "Vertical Position", 
+       title = "Fastballs - Pitcher's Count", color = "Pitch") +
+  theme(legend.position = "bottom",
+        legend.title = element_text(family = "Trebuchet MS", color="#666666", face="bold", size=15),
+        legend.text = element_text(family = "Trebuchet MS", color="#666666", face="bold", size=12),
+        plot.title = element_text(family = "Trebuchet MS", color="#666666", face="bold", size=30, hjust=0),
+        axis.title = element_text(family = "Trebuchet MS", color="#666666", face="bold", size=20),
+        strip.text = element_text(family = "Trebuchet MS", color="#666666", size=20)
+        )
 
-
-# 1-2 count by type, hand
-ggplot(data = filter(kyle, count == "1-2"), aes(px, pz, color = simple_pitch_type)) + 
-  facet_wrap(~b_hand) +
-  geom_point(size = 2) +
+# ARTICLE - Behind fastballs* location
+ggplot(data = filter(kyle, balls > strikes, simple_pitch_type %in% c("FF", "FT")),
+       aes(px, pz, color = simple_pitch_type)) +
+  facet_grid(.~b_hand_lab) +
+  geom_point(size = 3) +
   geom_polygon(data = strike.zone, aes(x = x, y = y, color = NA), fill = NA, color = "black") +
-  coord_fixed()
+  coord_fixed(ylim = c(0, 6), xlim = c(-2.2, 2.2)) +
+  scale_color_manual(values = c("#FB9A99", "#E31A1C"), 
+                     labels = c("Two-Seam", "Four-Seam")) +
+  labs(x = "Horizontal Position", y = "Vertical Position", 
+       title = "Fastballs - Hitter's Count", color = "Pitch") +
+  theme(legend.position = "bottom",
+        legend.title = element_text(family = "Trebuchet MS", color="#666666", face="bold", size=15),
+        legend.text = element_text(family = "Trebuchet MS", color="#666666", face="bold", size=12),
+        plot.title = element_text(family = "Trebuchet MS", color="#666666", face="bold", size=30, hjust=0),
+        axis.title = element_text(family = "Trebuchet MS", color="#666666", face="bold", size=20),
+        strip.text = element_text(family = "Trebuchet MS", color="#666666", size=20))
 
-# 1-2 count by type, result, hand
-ggplot(data = filter(kyle, count == "1-2"), aes(px, pz, color = pitch_ab_res)) + 
-  facet_grid(b_hand~simple_pitch_type) +
-  geom_point(size = 2) +
-  geom_polygon(data = strike.zone, aes(x = x, y = y, color = NA), fill = NA, color = "black") +
-  coord_fixed()
-
-(tab.12 <- table(kyle$simple_pitch_type[kyle$count == "1-2"], kyle$b_hand[kyle$count == "1-2"]))
-prop.table(tab.12, 2)
-
-
-
-# 2 strikes by count, hand, type
-ggplot(data = filter(kyle, strikes == 2), aes(px, pz, color = simple_pitch_type)) + 
-  facet_grid(b_hand~balls) +
-  geom_point(size = 2) +
-  geom_polygon(data = strike.zone, aes(x = x, y = y, color = NA), fill = NA, color = "black") +
-  coord_fixed()
-
-# Location by type, result
-ggplot(data = kyle, aes(px, pz)) + 
-  facet_grid(simple_pitch_type~pitch_ab_res) +
-  geom_point(size = 2) +
-  geom_polygon(data = strike.zone, aes(x = x, y = y, color = NA), fill = NA, color = "black") +
-  coord_fixed()
+table(kyle$simple_pitch_type[kyle$simple_pitch_type %in% c("FF", "FT")],
+      kyle$strikes[kyle$simple_pitch_type %in% c("FF", "FT")] >= 
+        kyle$balls[kyle$simple_pitch_type %in% c("FF", "FT")]) %>%
+  prop.table(2)
 
 
-# How did kyle get strikeouts?
-table(kyle$simple_pitch_type[kyle$strikes == 2])/sum(kyle$strikes == 2)
-table(kyle$simple_pitch_type[kyle$last & kyle$simple_event == "K"])/sum(kyle$last & kyle$simple_event == "K")
+#############
+# Heat maps #
+#############
+kg <- kyle %>% filter(simple_pitch_type == "FF", b_hand == "L", strikes != 2) %>% select(px, pz, b_hand)
 
+res <- 100
+heat.df <- data.frame(x = seq(-3, 3, length.out = res), 
+                      y = rep(seq(0, 6, length.out = res), each = res))
+# Normal kernel
+heat.func <- function(x, y, df.x = kg$px, df.y = kg$pz, st.dev = 1) {
+  xsq <- (x - df.x)^2
+  ysq <- (y - df.y)^2
+  
+  dist <- sqrt(xsq + ysq)
+  
+  weighted <- dnorm(dist, sd = st.dev)
+  
+  return(sum(weighted))
+}
 
-table(kyle$simple_pitch_type[kyle$last & kyle$simple_event == "K"])
-table(kyle$count[kyle$last & kyle$simple_event == "K"],
-      kyle$simple_pitch_type[kyle$last & kyle$simple_event == "K"])
-table(kyle$count[kyle$last & kyle$simple_event == "K"],
-      kyle$simple_pitch_type[kyle$last & kyle$simple_event == "K"],
-      kyle$b_hand[kyle$last & kyle$simple_event == "K"])
+heat.df$heat <- mapply(heat.func, x = heat.df$x, y = heat.df$y, MoreArgs = list(st.dev = .25))
 
-
-####################
-# Pitch sequencing #
-####################
-
-kyle.seq <- kyle %>% group_by(gid, ab_num) %>%
-  mutate(prev_count = lag(count, 1, default = "None"),
-         prev_pitch = lag(as.character(simple_pitch_type), 1, default = "None"),
-         back_2 = lag(as.character(simple_pitch_type), 2, default = "None"),
-         next_pitch = lead(as.character(simple_pitch_type), 1, default = "None"),
-         pitch_num = 1:n()) %>%
-  ungroup()
-
-
-kyle.seq %>% select(pitch_result, prev_pitch, simple_pitch_type, next_pitch) %>% View()
-
-
-table(kyle.seq$prev_pitch, kyle.seq$simple_pitch_type) %>% prop.table(1)
-
-
-##### Individual Counts #####
-
-# 0-2 count
-ggplot(data = filter(kyle.seq, count == "0-2"), aes(px, pz, color = simple_pitch_type)) + 
-  facet_grid(prev_count~prev_pitch) +
-  geom_point(size = 2) +
-  geom_polygon(data = strike.zone, aes(x = x, y = y, color = NA), fill = NA, color = "black") +
-  coord_fixed()
-
-table(kyle.seq$prev_pitch[kyle$count == "0-2"],
-      kyle.seq$simple_pitch_type[kyle$count == "0-2"]) %>%
-  prop.table(1)
-
-table(kyle.seq$prev_pitch[kyle$count == "0-2"],
-      kyle.seq$simple_pitch_type[kyle$count == "0-2"],
-      kyle.seq$b_hand[kyle$count == "0-2"]) %>%
-  prop.table(c(1, 3))
-
-ggplot(data = filter(kyle.seq, count == "0-2"), aes(x = b_hand, fill = simple_pitch_type)) +
-  facet_grid(prev_count~prev_pitch) + geom_bar(position = "fill")
-
-
-# 1-2 count
-ggplot(data = filter(kyle.seq, count == "1-2"), aes(px, pz, color = simple_pitch_type)) + 
-  facet_grid(prev_count~prev_pitch) +
-  geom_point(size = 2) +
-  geom_polygon(data = strike.zone, aes(x = x, y = y, color = NA), fill = NA, color = "black") +
-  coord_fixed()
-
-table(kyle.seq$prev_pitch[kyle$count == "1-2"],
-      kyle.seq$simple_pitch_type[kyle$count == "1-2"]) %>%
-  prop.table(1)
-
-table(kyle.seq$prev_pitch[kyle$count == "1-2"],
-      kyle.seq$simple_pitch_type[kyle$count == "1-2"],
-      kyle.seq$b_hand[kyle$count == "1-2"]) %>%
-  prop.table(c(1, 3))
-
-ggplot(data = filter(kyle.seq, count == "1-2"), aes(x = b_hand, fill = simple_pitch_type)) +
-  facet_grid(prev_count~prev_pitch) + geom_bar(position = "fill")
-
-
-# Two-strike fouls
-table(kyle.seq$prev_pitch[kyle.seq$count == kyle.seq$prev_count & kyle.seq$b_hand == "R"],
-      kyle.seq$simple_pitch_type[kyle.seq$count == kyle.seq$prev_count & kyle.seq$b_hand == "R"])
-
-
-# 2-2 count
-ggplot(data = filter(kyle.seq, count == "2-2"), aes(px, pz, color = simple_pitch_type)) + 
-  facet_grid(prev_count~prev_pitch) +
-  geom_point(size = 2) +
-  geom_polygon(data = strike.zone, aes(x = x, y = y, color = NA), fill = NA, color = "black") +
-  coord_fixed()
-
-table(kyle.seq$prev_pitch[kyle.seq$count == "2-2"],
-      kyle.seq$simple_pitch_type[kyle.seq$count == "2-2"]) %>%
-  prop.table(1)
-
-table(kyle.seq$prev_pitch[kyle$count == "2-2"],
-      kyle.seq$simple_pitch_type[kyle$count == "2-2"],
-      kyle.seq$b_hand[kyle$count == "2-2"]) %>%
-  prop.table(c(1, 3))
-
-ggplot(data = filter(kyle.seq, count == "2-2"), aes(x = b_hand, fill = simple_pitch_type)) +
-  facet_grid(prev_count~prev_pitch) + geom_bar(position = "fill")
-
-
-
-
-
-# 3-2 count
-ggplot(data = filter(kyle.seq, count == "3-2"), aes(px, pz, color = simple_pitch_type)) + 
-  facet_grid(prev_count~prev_pitch) +
-  geom_point(size = 2) +
-  geom_polygon(data = strike.zone, aes(x = x, y = y, color = NA), fill = NA, color = "black") +
-  coord_fixed()
-
-table(kyle.seq$prev_pitch[kyle$count == "3-2"],
-      kyle.seq$simple_pitch_type[kyle$count == "3-2"]) %>%
-  prop.table(1)
-
-table(kyle.seq$prev_pitch[kyle$count == "3-2"],
-      kyle.seq$simple_pitch_type[kyle$count == "3-2"],
-      kyle.seq$b_hand[kyle$count == "3-2"]) %>%
-  prop.table(c(1, 3))
-
-ggplot(data = filter(kyle.seq, count == "3-2"), aes(x = b_hand, fill = simple_pitch_type)) +
-  facet_grid(prev_count~prev_pitch) + geom_bar(position = "fill")
-
-
-
-# Second pitch
-ggplot(data = filter(kyle.seq, count %in% c("1-0", "0-1")), aes(x = b_hand, fill = simple_pitch_type)) +
-  facet_grid(count~prev_pitch) + geom_bar(position = "fill")
+ggplot(data = heat.df, aes(x, y, fill = heat)) + geom_raster(interpolate = T) +
+  geom_polygon(data = strike.zone, aes(x = x, y = y, color = NA), fill = NA, color = "grey50") +
+  coord_fixed() +
+  scale_fill_gradient(low = "midnightblue", high = "yellow")
 
 
 #############
@@ -398,9 +333,11 @@ inning.df <- kyle %>% group_by(inning) %>%
   summarize(Fastball = sum(simple_pitch_type == "FF")/n(),
             Slider = sum(simple_pitch_type == "SL")/n(),
             Changeup = sum(simple_pitch_type == "CH")/n(),
+            TwoSeam = sum(simple_pitch_type == "FT")/n(),
+            Curveball = sum(simple_pitch_type == "CU")/n(),
             Total = n()) %>%
   ungroup() %>%
-  gather(key = Pitch, value = Frequency, Fastball, Slider, Changeup)
+  gather(key = Pitch, value = Frequency, Fastball, Slider, Changeup, TwoSeam, Curveball)
 
 ggplot(data = filter(inning.df, inning <= 7), aes(x = inning, y = Frequency, color = Pitch)) + geom_line() + geom_point()
 
@@ -410,25 +347,15 @@ inning.df <- kyle %>% group_by(gid) %>%
   summarize(Fastball = sum(simple_pitch_type == "FF")/n(),
             Slider = sum(simple_pitch_type == "SL")/n(),
             Changeup = sum(simple_pitch_type == "CH")/n(),
+            TwoSeam = sum(simple_pitch_type == "FT")/n(),
+            Curveball = sum(simple_pitch_type == "CU")/n(),
             Total = n()) %>%
   ungroup() %>%
-  gather(key = Pitch, value = Frequency, Fastball, Slider, Changeup)
+  gather(key = Pitch, value = Frequency, Fastball, Slider, Changeup, TwoSeam, Curveball)
 
 ggplot(data = filter(inning.df, inning <= 7), aes(x = inning, y = Frequency, color = Pitch)) + 
   geom_line() + geom_point()
 
-
-##################
-# By baserunners #
-##################
-
-kyle_b <- kyle %>% mutate(baserunner = !is.na(runner_1) | !is.na(runner_2) | !is.na(runner_3),
-                            on_third = !is.na(runner_3),
-                            on_second = !is.na(runner_2))
-
-table(kyle_b$baserunner, kyle_b$simple_pitch_type) %>% prop.table(1)
-table(kyle_b$on_third, kyle_b$simple_pitch_type) %>% prop.table(1)
-table(kyle_b$on_second, kyle_b$simple_pitch_type) %>% prop.table(1)
 
 #################
 # Pitch strings #
@@ -437,14 +364,18 @@ table(kyle_b$on_second, kyle_b$simple_pitch_type) %>% prop.table(1)
 # Actual
 
 abid <- paste0(kyle$gid, kyle$ab_num)
-pitches.1 <- kyle$simple_pitch_type %>% as.character() %>% substr(1, 1)
+
+k.pitch.adj <- ifelse(kyle$simple_pitch_type == "FT", "TT",
+                      ifelse(kyle$simple_pitch_type == "CU", "DD", 
+                             as.character(kyle$simple_pitch_type)))
+pitches.1 <- k.pitch.adj %>% as.character() %>% substr(1, 1)
 
 seqs <- tapply(pitches.1, abid, paste0, collapse = "", simplify = T) %>%
   as.vector()
 
-ps <- c("F", "S", "C")
-all.duos <- paste0(rep(ps, each = 3), ps)
-all.trios <- paste0(rep(all.duos, each = 3), ps)
+ps <- c("F", "S", "C", "D", "T")
+all.duos <- paste0(rep(ps, each = 5), ps)
+all.trios <- paste0(rep(all.duos, each = 5), ps)
 
 
 duos.to.match <- paste0("(?=", all.duos, ")")
@@ -470,7 +401,7 @@ seqs.df <- data.frame(pattern = c(all.duos, all.trios), freq = c(duos.freq, trio
 rand.freqs <- matrix(0, nrow = length(all.duos) + length(all.trios), ncol = 100)
 
 for (j in 1:100) {
-  pitches.1.r <- kyle$simple_pitch_type %>% as.character() %>% substr(1, 1) %>% sample()
+  pitches.1.r <- k.pitch.adj %>% as.character() %>% substr(1, 1) %>% sample()
   
   seqs.r <- tapply(pitches.1.r, abid, paste0, collapse = "", simplify = T) %>%
     as.vector()
@@ -498,8 +429,8 @@ seqs.df <- data.frame(pattern = c(all.duos, all.trios),
                       exp = apply(rand.freqs, 1, mean)) %>%
   mutate(p_diff = (freq - exp)/exp)
 
-duos.df <- seqs.df[1:9,]
-trios.df <- seqs.df[10:nrow(seqs.df),]
+duos.df <- seqs.df[1:25,]
+trios.df <- seqs.df[26:nrow(seqs.df),]
 
 ggplot(data = duos.df, aes(x = exp, y = freq, label = pattern)) + 
   geom_text() + 
@@ -509,9 +440,14 @@ ggplot(data = trios.df, aes(x = exp, y = freq, label = pattern)) +
   geom_text() + 
   geom_abline(slope = 1, intercept = 0, color = "red")
 
-ggplot(data = filter(duos.df, exp > 100), aes(x = reorder(pattern, -p_diff), y = p_diff)) + 
+twins_blue <- "#0C2341"
+twins_red <- "#BA0C2E"
+twins_gold <- "#CFAB7A"
+
+# ARTICLE
+ggplot(data = filter(duos.df, exp > 75), aes(x = reorder(pattern, -p_diff), y = p_diff)) + 
   geom_bar(stat = "identity", fill = twins_blue, color = twins_gold, size = 1) + theme_minimal()
-ggplot(data = filter(trios.df, exp > 100), aes(x = reorder(pattern, -p_diff), y = p_diff)) + geom_bar(stat = "identity")
+ggplot(data = filter(trios.df, exp > 20), aes(x = reorder(pattern, -p_diff), y = p_diff)) + geom_bar(stat = "identity")
 
 
 
