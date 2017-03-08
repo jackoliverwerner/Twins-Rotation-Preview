@@ -5,6 +5,8 @@
 library(plyr)
 library(dplyr)
 library(ggplot2)
+library(lubridate)
+library(tidyr)
 
 setwd("C:/Users/jack.werner1/Documents/BB")
 #setwd("/Users/jackwerner/Documents/My Stuff/Baseball/Scraping Files")
@@ -88,11 +90,57 @@ ggplot(data = hector, aes(start_speed, fill = simple_pitch_type)) +
   geom_density(alpha = .5, color = "grey50", size = 1)
 
 
-hector <- hector %>% 
-  mutate(simple_pitch_type = ifelse(simple_pitch_type == "FC", "FF", simple_pitch_type))
+###############################
+# Pitches by count/handedness #
+###############################
+
+tables <- hector %>% group_by(count, balls, strikes, b_hand) %>%
+  summarize(FC = sum(simple_pitch_type == "FC"),
+            SI = sum(simple_pitch_type == "SI"),
+            CH = sum(simple_pitch_type == "CH"),
+            CU = sum(simple_pitch_type == "CU"),
+            SL = sum(simple_pitch_type == "SL"),
+            FC_p = FC/n(), SI_p = SI/n(), CH_p = CH/n(),
+            CU_p = CU/n(), SL_p = SL/n(), total = n()) %>%
+  ungroup()
+
+tables %>% filter(b_hand == "R") %>% as.data.frame()
+
+hector$simple_pitch_type <- factor(hector$simple_pitch_type, 
+                                   levels = c("CU", "SL", "CH", "FC", "SI"))
+
+ggplot(data = hector, aes(b_hand, fill = simple_pitch_type)) + facet_grid(strikes~balls) + 
+  geom_bar(position = "fill")
+
+table(hector$simple_pitch_type, hector$b_hand) %>% prop.table(2)
 
 
-#### Continue from here ####
+########################################
+# Pitch distribution as season went on #
+########################################
+
+gidToDate <- function(g) {
+  gc <- as.character(g) %>%
+    strsplit("_")
+  
+  date.char <- gc[[1]][2:4] %>% paste0(collapse = "")
+  
+  return(date.char)
+}
+
+hector$date <- sapply(hector$gid, gidToDate)
+hector$date <- ymd(hector$date)
+
+ggplot(data = hector, aes(date, fill = simple_pitch_type)) + geom_bar(position = "fill")
+
+a <- hector %>% group_by(date) %>% summarize(SI = sum(simple_pitch_type == "SI")/n(),
+                                             FC = sum(simple_pitch_type == "FC")/n(),
+                                             CH = sum(simple_pitch_type == "CH")/n(),
+                                             SL = sum(simple_pitch_type == "SL")/n(),
+                                             CU = sum(simple_pitch_type == "CU")/n()) %>%
+  gather("Pitch", "Freq", 2:6) %>% ungroup()
+
+ggplot(a, aes(x = date, y = Freq, color = Pitch)) + geom_line(size = 1) + geom_point(size = 3)
 
 
 #############################
@@ -107,36 +155,16 @@ ggplot(data = filter(hector, pitch_result %in% c("Ball", "Ball In Dirt", "Called
   geom_polygon(data = strike.zone, aes(x = x, y = y, color = NA), fill = NA, color = "black") +
   coord_fixed()
 
-
-
-ggplot(data = hector, aes(px, pz, color = simple_pitch_type)) + geom_point()
-
-hector <- hector %>% mutate(k = simple_event == "K" & last)
-
-ggplot(data = filter(hector, count == "0-2"), aes(px, pz, color = simple_pitch_type, shape = k)) + 
-  geom_point(size = 2) +
-  geom_polygon(data = strike.zone, aes(x = x, y = y, color = NA, shape = NA), fill = NA, color = "black") +
+ggplot(data = hector, aes(px, pz, color = simple_pitch_type)) + geom_point() +
+  geom_polygon(data = strike.zone, aes(x = x, y = y, color = NA), fill = NA, color = "black") +
   coord_fixed()
 
-
-ggplot(data = hector, aes(px, pz, color = simple_pitch_type, shape = k)) + 
-  geom_point() +
+ggplot(data = hector, aes(px, pz)) + geom_point() + facet_wrap(~simple_pitch_type) +
   geom_polygon(data = strike.zone, aes(x = x, y = y, color = NA), fill = NA, color = "black") +
   coord_fixed()
 
 
-###############################
-# Pitches by count/handedness #
-###############################
 
-tables <- hector %>% group_by(count, balls, strikes, b_hand) %>%
-  summarize(FF = sum(simple_pitch_type == "FF"),
-            SL = sum(simple_pitch_type == "SL"),
-            CH = sum(simple_pitch_type == "CH"),
-            FF_p = FF/n(), SL_p = SL/n(), CH_p = CH/n(), total = n()) %>%
-  ungroup()
-
-tables %>% filter(b_hand == "R") %>% as.data.frame()
 
 
 
