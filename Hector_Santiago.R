@@ -8,8 +8,8 @@ library(ggplot2)
 library(lubridate)
 library(tidyr)
 
-setwd("C:/Users/jack.werner1/Documents/BB")
-#setwd("/Users/jackwerner/Documents/My Stuff/Baseball/Scraping Files")
+#setwd("C:/Users/jack.werner1/Documents/BB")
+setwd("/Users/jackwerner/Documents/My Stuff/Baseball/Scraping Files")
 
 # Read data
 pitch <- read.csv(file = "pitch_data_2016.csv")
@@ -112,6 +112,10 @@ hector$simple_pitch_type <- factor(hector$simple_pitch_type,
 ggplot(data = hector, aes(b_hand, fill = simple_pitch_type)) + facet_grid(strikes~balls) + 
   geom_bar(position = "fill")
 
+ggplot(data = filter(hector, simple_pitch_type != "SI"), aes(b_hand, fill = simple_pitch_type)) + 
+  facet_grid(strikes~balls) + 
+  geom_bar(position = "fill")
+
 table(hector$simple_pitch_type, hector$b_hand) %>% prop.table(2)
 
 
@@ -159,12 +163,186 @@ ggplot(data = hector, aes(px, pz, color = simple_pitch_type)) + geom_point() +
   geom_polygon(data = strike.zone, aes(x = x, y = y, color = NA), fill = NA, color = "black") +
   coord_fixed()
 
+ggplot(data = filter(hector, simple_pitch_type != "SI"), aes(px, pz, color = simple_pitch_type)) + 
+  geom_point() +
+  geom_polygon(data = strike.zone, aes(x = x, y = y, color = NA), fill = NA, color = "black") +
+  coord_fixed()
+
 ggplot(data = hector, aes(px, pz)) + geom_point() + facet_wrap(~simple_pitch_type) +
   geom_polygon(data = strike.zone, aes(x = x, y = y, color = NA), fill = NA, color = "black") +
   coord_fixed()
 
 
+####################
+# Pitches by count #
+####################
 
+ggplot(data = hector, aes(px, pz, color = simple_pitch_type)) + geom_point() + facet_grid(strikes~balls) +
+  geom_polygon(data = strike.zone, aes(x = x, y = y, color = NA), fill = NA, color = "black") +
+  coord_fixed()
+
+# Sinkers
+ggplot(data = filter(hector, simple_pitch_type == "SI"), aes(px, pz, color = simple_pitch_type)) + 
+  geom_point() + facet_grid(strikes~balls) +
+  geom_polygon(data = strike.zone, aes(x = x, y = y, color = NA), fill = NA, color = "black") +
+  coord_fixed()
+
+# Cutters
+ggplot(data = filter(hector, simple_pitch_type == "FC"), aes(px, pz, color = simple_pitch_type)) + 
+  geom_point() + facet_grid(strikes~balls) +
+  geom_polygon(data = strike.zone, aes(x = x, y = y, color = NA), fill = NA, color = "black") +
+  coord_fixed()
+
+# Sliders
+ggplot(data = filter(hector, simple_pitch_type == "SL"), aes(px, pz, color = simple_pitch_type)) + 
+  geom_point() + facet_grid(strikes~balls) +
+  geom_polygon(data = strike.zone, aes(x = x, y = y, color = NA), fill = NA, color = "black") +
+  coord_fixed()
+
+# Changeups
+ggplot(data = filter(hector, simple_pitch_type == "CH"), aes(px, pz, color = simple_pitch_type)) + 
+  geom_point() + facet_grid(strikes~balls) +
+  geom_polygon(data = strike.zone, aes(x = x, y = y, color = NA), fill = NA, color = "black") +
+  coord_fixed()
+
+# Curveballs
+ggplot(data = filter(hector, simple_pitch_type == "CU"), aes(px, pz, color = simple_pitch_type)) + 
+  geom_point() + facet_grid(strikes~balls) +
+  geom_polygon(data = strike.zone, aes(x = x, y = y, color = NA), fill = NA, color = "black") +
+  coord_fixed()
+
+
+
+
+#################
+# Pitch strings #
+#################
+
+# Actual
+
+abid <- paste0(hector$gid, hector$ab_num)
+
+k.pitch.adj <- ifelse(hector$simple_pitch_type == "SL", "LL",
+                      ifelse(hector$simple_pitch_type == "CU", "UU", 
+                             as.character(hector$simple_pitch_type)))
+pitches.1 <- k.pitch.adj %>% as.character() %>% substr(1, 1)
+
+seqs <- tapply(pitches.1, abid, paste0, collapse = "", simplify = T) %>%
+  as.vector()
+
+ps <- c("F", "S", "C", "U", "L")
+all.duos <- paste0(rep(ps, each = 5), ps)
+all.trios <- paste0(rep(all.duos, each = 5), ps)
+
+
+duos.to.match <- paste0("(?=", all.duos, ")")
+duos.freq <- rep(0, length(all.duos))
+
+for (i in 1:length(all.duos)) {
+  duos.freq[i] <- gregexpr(duos.to.match[i], seqs, perl = T) %>% sapply(function(x){sum(x>0)}) %>% sum()
+}
+
+
+trios.to.match <- paste0("(?=", all.trios, ")")
+trios.freq <- rep(0, length(all.trios))
+
+for (i in 1:length(all.trios)) {
+  trios.freq[i] <- gregexpr(trios.to.match[i], seqs, perl = T) %>% sapply(function(x){sum(x>0)}) %>% sum()
+}
+
+seqs.df <- data.frame(pattern = c(all.duos, all.trios), freq = c(duos.freq, trios.freq))
+
+
+# Random
+
+rand.freqs <- matrix(0, nrow = length(all.duos) + length(all.trios), ncol = 100)
+
+for (j in 1:100) {
+  pitches.1.r <- k.pitch.adj %>% as.character() %>% substr(1, 1) %>% sample()
+  
+  seqs.r <- tapply(pitches.1.r, abid, paste0, collapse = "", simplify = T) %>%
+    as.vector()
+  
+  duos.freq.r <- rep(0, length(all.duos))
+  
+  for (i in 1:length(all.duos)) {
+    duos.freq.r[i] <- gregexpr(duos.to.match[i], seqs.r, perl = T) %>% sapply(function(x){sum(x>0)}) %>% sum()
+  }
+  
+  
+  trios.freq.r <- rep(0, length(all.trios))
+  
+  for (i in 1:length(all.trios)) {
+    trios.freq.r[i] <- gregexpr(trios.to.match[i], seqs.r, perl = T) %>% sapply(function(x){sum(x>0)}) %>% sum()
+  }
+  
+  rand.freqs[,j] <- c(duos.freq.r, trios.freq.r)
+  
+  print(j)
+}
+
+seqs.df <- data.frame(pattern = c(all.duos, all.trios), 
+                      freq = c(duos.freq, trios.freq), 
+                      exp = apply(rand.freqs, 1, mean)) %>%
+  mutate(p_diff = (freq - exp)/exp)
+
+duos.df <- seqs.df[1:25,]
+trios.df <- seqs.df[26:nrow(seqs.df),]
+
+ggplot(data = duos.df, aes(x = exp, y = freq, label = pattern)) + 
+  geom_text() + 
+  geom_abline(slope = 1, intercept = 0, color = "red")
+
+ggplot(data = trios.df, aes(x = exp, y = freq, label = pattern)) + 
+  geom_text() + 
+  geom_abline(slope = 1, intercept = 0, color = "red")
+
+twins_blue <- "#0C2341"
+twins_red <- "#BA0C2E"
+twins_gold <- "#CFAB7A"
+
+ggplot(data = filter(duos.df, exp > 75), aes(x = reorder(pattern, -p_diff), y = p_diff)) + 
+  geom_bar(stat = "identity", fill = twins_blue, color = twins_gold, size = 1) + theme_minimal()
+ggplot(data = filter(trios.df, exp > 20), aes(x = reorder(pattern, -p_diff), y = p_diff)) + geom_bar(stat = "identity")
+
+
+# Consecutive changeups?
+
+hector <- hector %>% group_by(gid, ab_num) %>%
+  mutate(prev_pitch = lag(as.character(simple_pitch_type), default = "X")) %>%
+  ungroup()
+
+
+View(hector %>% select(ab_num, simple_pitch_type, prev_pitch))
+table(ifelse(hector$prev_pitch == "CH", "Prev Change", "Not"),
+      ifelse(hector$simple_pitch_type == "CH", "Changeup", "Not")) %>%
+  prop.table(1)
+
+table(ifelse(hector$prev_pitch == "CH", "Prev Change", "Not"),
+      ifelse(hector$simple_pitch_type == "CH", "Changeup", "Not"),
+      hector$count) %>%
+  prop.table(c(1, 3))
+
+hector$prev_change = hector$prev_pitch == "CH"
+hector$change = hector$simple_pitch_type == "CH"
+ggplot(data = hector, aes(prev_change, fill = change)) +
+  geom_bar(position = "fill") +
+  facet_grid(strikes~balls)
+
+
+# Just look at to righties
+table(ifelse(hector$prev_pitch == "CH", "Prev Change", "Not")[hector$b_hand == "R"],
+      ifelse(hector$simple_pitch_type == "CH", "Changeup", "Not")[hector$b_hand == "R"],
+      hector$count[hector$b_hand == "R"]) %>%
+  prop.table(c(1, 3))
+
+ggplot(data = filter(hector, b_hand == "R"), aes(prev_change, fill = change)) +
+  geom_bar(position = "fill") +
+  facet_grid(strikes~balls)
+
+changes <- hector %>% group_by(count, balls, strikes, prev_change) %>%
+  summarize(change_perc = sum(change)/n()) %>%
+  ungroup()
 
 
 
