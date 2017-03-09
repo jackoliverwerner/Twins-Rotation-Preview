@@ -8,8 +8,8 @@ library(ggplot2)
 library(lubridate)
 library(tidyr)
 
-#setwd("C:/Users/jack.werner1/Documents/BB")
-setwd("/Users/jackwerner/Documents/My Stuff/Baseball/Scraping Files")
+setwd("C:/Users/jack.werner1/Documents/BB")
+#setwd("/Users/jackwerner/Documents/My Stuff/Baseball/Scraping Files")
 
 # Read data
 pitch <- read.csv(file = "pitch_data_2016.csv")
@@ -301,6 +301,7 @@ twins_blue <- "#0C2341"
 twins_red <- "#BA0C2E"
 twins_gold <- "#CFAB7A"
 
+# ARTICLE
 ggplot(data = filter(duos.df, exp > 75), aes(x = reorder(pattern, -p_diff), y = p_diff)) + 
   geom_bar(stat = "identity", fill = twins_blue, color = twins_gold, size = 1) + theme_minimal()
 ggplot(data = filter(trios.df, exp > 20), aes(x = reorder(pattern, -p_diff), y = p_diff)) + geom_bar(stat = "identity")
@@ -325,9 +326,39 @@ table(ifelse(hector$prev_pitch == "CH", "Prev Change", "Not"),
 
 hector$prev_change = hector$prev_pitch == "CH"
 hector$change = hector$simple_pitch_type == "CH"
+
 ggplot(data = hector, aes(prev_change, fill = change)) +
   geom_bar(position = "fill") +
   facet_grid(strikes~balls)
+
+
+change.df <- hector %>% group_by(count, prev_change) %>%
+  summarize(change_perc = sum(simple_pitch_type == "CH")/n()*100) %>%
+  ungroup() %>% mutate(h_adj_all = 1.3 - 1.8*prev_change, h_adj_rh = h_adj_all,
+                       v_adj_all = 0, v_adj_rh = 0)
+
+
+# ARTICLE
+
+change.df$v_adj_all[change.df$count == "1-0" & !change.df$prev_change] <- -.6
+change.df$v_adj_all[change.df$count == "0-0" & !change.df$prev_change] <- -.4
+change.df$v_adj_all[change.df$count == "2-2" & !change.df$prev_change] <- .8
+change.df$v_adj_all[change.df$count == "2-0" & !change.df$prev_change] <- .4
+change.df$v_adj_all[change.df$count == "3-2" & !change.df$prev_change] <- .8
+change.df$v_adj_all[change.df$count == "0-2" & !change.df$prev_change] <- .4
+change.df$v_adj_all[change.df$count == "3-1" & !change.df$prev_change] <- .6
+
+ggplot(data = change.df, aes(x = prev_change, y = change_perc, group = count)) + 
+  geom_text(aes(label = count, hjust = h_adj_all, vjust = v_adj_all), size = 5) + 
+  geom_line() + geom_point() +
+  coord_cartesian(ylim = c(0, 50), xlim = c(1.25, 1.75)) #+
+#   labs(x = "Changeup on Previous Pitch?", y = "Changeup percentage", title = "Changeup Percentage by Previous Pitch") +
+#   theme(legend.title = element_text(family = "Trebuchet MS", color="#666666", face="bold", size=15),
+#         legend.text = element_text(family = "Trebuchet MS", color="#666666", face="bold", size=12),
+#         plot.title = element_text(family = "Trebuchet MS", color="#666666", face="bold", size=30, hjust=0),
+#         axis.title = element_text(family = "Trebuchet MS", color="#666666", face="bold", size=20),
+#         axis.text.x = element_text(family = "Trebuchet MS", color="#666666", size=15),
+#         axis.text.y = element_text(family = "Trebuchet MS", color="#666666", size=20))
 
 
 # Just look at to righties
@@ -343,11 +374,6 @@ ggplot(data = filter(hector, b_hand == "R"), aes(prev_change, fill = change)) +
 changes <- hector %>% group_by(count, balls, strikes, prev_change) %>%
   summarize(change_perc = sum(change)/n()) %>%
   ungroup()
-
-
-
-
-
 
 
 
