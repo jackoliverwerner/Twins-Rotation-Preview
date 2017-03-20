@@ -8,8 +8,8 @@ library(ggplot2)
 library(lubridate)
 library(tidyr)
 
-#setwd("C:/Users/jack.werner1/Documents/BB")
-setwd("/Users/jackwerner/Documents/My Stuff/Baseball/Scraping Files")
+setwd("C:/Users/jack.werner1/Documents/BB")
+#setwd("/Users/jackwerner/Documents/My Stuff/Baseball/Scraping Files")
 
 # Read data
 pitch <- read.csv(file = "phil.csv")
@@ -118,24 +118,58 @@ phil$fastball <- factor(phil$fastball, levels = c("O", "F"))
 
 ggplot(data = phil, aes(pitcher, fill = fastball)) + facet_grid(strikes~balls) + 
   geom_bar(position = "fill") +
+  labs(x = "Balls", y = "Strikes", title = "Fastball Percentage by Count",
+       fill = "Pitch") +
   scale_fill_manual(values = c("#E31A1C", "#12496D"),
-                    labels = c("Fastball", "Offspeed")) 
+                    labels = c("Fastball", "Offspeed")) +
+  theme(legend.position = "bottom",
+        legend.title = element_text(family = "Trebuchet MS", color="#666666", face="bold", size=15),
+        legend.text = element_text(family = "Trebuchet MS", color="#666666", face="bold", size=12),
+        plot.title = element_text(family = "Trebuchet MS", color="#666666", face="bold", size=30, hjust=0),
+        axis.title = element_text(family = "Trebuchet MS", color="#666666", face="bold", size=20),
+        axis.text.x = element_blank(),
+        axis.text.y = element_text(family = "Trebuchet MS", color="#666666", size=15),
+        strip.text = element_text(family = "Trebuchet MS", color="#666666", size=20),
+        panel.margin = unit(0, "lines"))
 
 
 ggplot(data = phil, aes(pitcher, fill = simple_pitch_type)) + facet_grid(strikes~balls) + 
   geom_bar(position = "fill") +
+  labs(x = "Balls", y = "Strikes", title = "Pitch Types by Count",
+       fill = "Pitch") +
   scale_fill_manual(values = c("#E31A1C", "#FB9A99", "#1F78B4", "#12496D"),
-                    labels = c("Changeup", "Curveball", "Cutter", "Four-seam"))  
+                    labels = c("Changeup", "Curveball", "Cutter", "Four-seam")) +
+  theme(legend.position = "bottom",
+        legend.title = element_text(family = "Trebuchet MS", color="#666666", face="bold", size=15),
+        legend.text = element_text(family = "Trebuchet MS", color="#666666", face="bold", size=12),
+        plot.title = element_text(family = "Trebuchet MS", color="#666666", face="bold", size=30, hjust=0),
+        axis.title = element_text(family = "Trebuchet MS", color="#666666", face="bold", size=20),
+        axis.text.x = element_blank(),
+        axis.text.y = element_text(family = "Trebuchet MS", color="#666666", size=15),
+        strip.text = element_text(family = "Trebuchet MS", color="#666666", size=20),
+        panel.margin = unit(0, "lines"))
 
 
 ggplot(data = phil, aes(b_hand, fill = simple_pitch_type)) + facet_grid(strikes~balls) + 
   geom_bar(position = "fill") +
+  labs(x = "Balls", y = "Strikes", title = "Pitch Types by Count and Handedness",
+       fill = "Pitch") +
   scale_fill_manual(values = c("#E31A1C", "#FB9A99", "#1F78B4", "#12496D"),
-                    labels = c("Changeup", "Curveball", "Cutter", "Four-seam"))  
+                    labels = c("Changeup", "Curveball", "Cutter", "Four-seam")) +
+  theme(legend.position = "bottom",
+        legend.title = element_text(family = "Trebuchet MS", color="#666666", face="bold", size=15),
+        legend.text = element_text(family = "Trebuchet MS", color="#666666", face="bold", size=12),
+        plot.title = element_text(family = "Trebuchet MS", color="#666666", face="bold", size=30, hjust=0),
+        axis.title = element_text(family = "Trebuchet MS", color="#666666", face="bold", size=20),
+        axis.text.x = element_blank(),
+        axis.text.y = element_text(family = "Trebuchet MS", color="#666666", size=15),
+        strip.text = element_text(family = "Trebuchet MS", color="#666666", size=20),
+        panel.margin = unit(0, "lines"))
 
 
 
- 
+
+
 
 
 
@@ -350,9 +384,9 @@ phil$date <- ymd(phil$date)
 ggplot(data = phil, aes(date, fill = simple_pitch_type)) + geom_bar(position = "fill")
 
 a <- phil %>% group_by(date) %>% summarize(FF = sum(simple_pitch_type == "FF")/n(),
-                                             FC = sum(simple_pitch_type == "FC")/n(),
-                                             CH = sum(simple_pitch_type == "CH")/n(),
-                                             CU = sum(simple_pitch_type == "CU")/n(),
+                                           FC = sum(simple_pitch_type == "FC")/n(),
+                                           CH = sum(simple_pitch_type == "CH")/n(),
+                                           CU = sum(simple_pitch_type == "CU")/n(),
                                            tot = n()) %>%
   gather("Pitch", "Freq", 2:5) %>% ungroup()
 
@@ -360,7 +394,7 @@ ggplot(a, aes(x = date, y = Freq, color = Pitch)) + geom_line(size = 1) + geom_p
 
 
 ###################
-     # 2016 #
+# 2016 #
 ###################
 
 # Read data
@@ -438,7 +472,7 @@ phil_16$simple_pitch_type <- ifelse(phil_16$simple_pitch_type == "FT", "FF", phi
 
 
 ###################
-     # Both #
+# Both #
 ###################
 
 gidToDate <- function(g) {
@@ -468,14 +502,5 @@ a <- phil %>% group_by(date) %>% summarize(FF = sum(simple_pitch_type == "FF")/n
   gather("Pitch", "Freq", 2:5) %>% ungroup()
 
 ggplot(a, aes(x = date, y = Freq, color = Pitch)) + geom_line(size = 1) + geom_point(size = 3)
-
-
-
-
-
-
-
-
-
 
 
