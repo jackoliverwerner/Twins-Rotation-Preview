@@ -8,8 +8,8 @@ library(ggplot2)
 library(lubridate)
 library(tidyr)
 
-setwd("C:/Users/jack.werner1/Documents/BB")
-#setwd("/Users/jackwerner/Documents/My Stuff/Baseball/Scraping Files")
+#setwd("C:/Users/jack.werner1/Documents/BB")
+setwd("/Users/jackwerner/Documents/My Stuff/Baseball/Scraping Files")
 
 # Read data
 pitch <- read.csv(file = "phil.csv")
@@ -201,7 +201,7 @@ ggplot(data = phil, aes(px, pz, color = simple_pitch_type)) + geom_point() + fac
   coord_fixed()
 
 
-# Cutter
+# Cutter ARTICLE
 ggplot(data = filter(phil, simple_pitch_type == "FC"), 
        aes(px, pz)) + facet_wrap(~b_hand) +
   geom_point() +
@@ -209,16 +209,42 @@ ggplot(data = filter(phil, simple_pitch_type == "FC"),
   coord_fixed()
 
 ggplot(data = filter(phil, simple_pitch_type == "FC", b_hand == "L"), 
-       aes(px, pz)) + facet_grid(strikes~balls) +
-  geom_point() +
-  geom_polygon(data = strike.zone, aes(x = x, y = y, color = NA), fill = NA, color = "black") +
-  coord_fixed()
+       aes(px, pz)) +
+  geom_point(size = 4, color = "#BA0C2E") +
+  geom_polygon(data = strike.zone, 
+               aes(x = x, y = y, color = NA), 
+               fill = NA, color = "black", size = 1) +
+  coord_fixed() +
+  labs(x = "", y = "", title = "Cutters to Lefties") +
+  theme(legend.position = "bottom",
+        legend.title = element_text(family = "Trebuchet MS", color="#666666", face="bold", size=15),
+        legend.text = element_text(family = "Trebuchet MS", color="#666666", face="bold", size=12),
+        plot.title = element_text(family = "Trebuchet MS", color="#666666", face="bold", size=30, hjust=0),
+        axis.title = element_text(family = "Trebuchet MS", color="#666666", face="bold", size=20),
+        axis.text.x = element_blank(),
+        axis.text.y = element_blank(),
+        strip.text = element_text(family = "Trebuchet MS", color="#666666", size=20))
 
+
+# ARTICLE
+phil$twostrikes <- ifelse(phil$strikes == 2, "Two Strikes", "Less Than Two Strikes")
 ggplot(data = filter(phil, simple_pitch_type == "FC", b_hand == "R"), 
-       aes(px, pz)) + facet_grid(strikes~balls) +
-  geom_point() +
+       aes(px, pz)) + facet_wrap(~twostrikes) +
+  geom_point(size = 2, color = "#BA0C2E") +
   geom_polygon(data = strike.zone, aes(x = x, y = y, color = NA), fill = NA, color = "black") +
-  coord_fixed()
+  coord_fixed() +
+  labs(x = "", y = "", title = "Cutters to Righties") +
+  theme(legend.position = "bottom",
+        legend.title = element_text(family = "Trebuchet MS", color="#666666", face="bold", size=15),
+        legend.text = element_text(family = "Trebuchet MS", color="#666666", face="bold", size=12),
+        plot.title = element_text(family = "Trebuchet MS", color="#666666", face="bold", size=30, hjust=0),
+        axis.title = element_text(family = "Trebuchet MS", color="#666666", face="bold", size=20),
+        axis.text.x = element_blank(),
+        axis.text.y = element_blank(),
+        strip.text = element_text(family = "Trebuchet MS", color="#666666", size=20))
+
+
+
 
 
 
@@ -268,6 +294,44 @@ ggplot(data = filter(phil, count == "2-2"), aes(px, pz, color = simple_pitch_typ
 table(phil$px[phil$b_hand == "L" & phil$count == "0-2"] < 0)
 table(phil$px[phil$b_hand == "L" & phil$strikes == 2] < 0)
 table(phil$px[phil$b_hand == "L"] < 0)
+
+
+#############
+# 1-2 and 0-2 #
+#############
+
+ggplot(data = filter(phil, strikes == 2, balls < 2, b_hand == "L"), aes(px, pz, color = simple_pitch_type)) + 
+  geom_point(size = 3) +
+  geom_polygon(data = strike.zone, aes(x = x, y = y, color = NA), fill = NA, color = "black") +
+  coord_fixed() +
+  scale_color_manual(values = c("#E31A1C", "#FB9A99", "#1F78B4", "#12496D"),
+                    labels = c("Changeup", "Curveball", "Cutter", "Four-seam")) +
+  labs(x = "", y = "", title = "0-2 and 1-2 pitches to LH", fill = "Pitch") +
+  theme(legend.position = "bottom",
+        legend.title = element_text(family = "Trebuchet MS", color="#666666", face="bold", size=15),
+        legend.text = element_text(family = "Trebuchet MS", color="#666666", face="bold", size=12),
+        plot.title = element_text(family = "Trebuchet MS", color="#666666", face="bold", size=30, hjust=0),
+        axis.title = element_text(family = "Trebuchet MS", color="#666666", face="bold", size=20),
+        axis.text.x = element_blank(),
+        axis.text.y = element_blank(),
+        strip.text = element_text(family = "Trebuchet MS", color="#666666", size=20))
+
+phil$h_labs <- ifelse(phil$b_hand == "L", "vs. LH", "vs. RH")
+ggplot(data = filter(phil, strikes == 2, balls < 2), aes(px, pz, color = simple_pitch_type)) + 
+  geom_point(size = 2) + facet_grid(h_labs~simple_pitch_type) +
+  geom_polygon(data = strike.zone, aes(x = x, y = y, color = NA), fill = NA, color = "black") +
+  coord_fixed() +
+  scale_color_manual(values = c("#E31A1C", "#FB9A99", "#1F78B4", "#12496D"),
+                     labels = c("Changeup", "Curveball", "Cutter", "Four-seam")) +
+  labs(x = "", y = "", title = "0-2 and 1-2 Pitches", color = "Pitch") +
+  theme(legend.position = "bottom",
+        legend.title = element_text(family = "Trebuchet MS", color="#666666", face="bold", size=15),
+        legend.text = element_text(family = "Trebuchet MS", color="#666666", face="bold", size=12),
+        plot.title = element_text(family = "Trebuchet MS", color="#666666", face="bold", size=30, hjust=0),
+        axis.title = element_text(family = "Trebuchet MS", color="#666666", face="bold", size=20),
+        axis.text.x = element_blank(),
+        axis.text.y = element_blank(),
+        strip.text = element_text(family = "Trebuchet MS", color="#666666", size=20))
 
 
 
@@ -381,7 +445,21 @@ gidToDate <- function(g) {
 phil$date <- sapply(phil$gid, gidToDate)
 phil$date <- ymd(phil$date)
 
-ggplot(data = phil, aes(date, fill = simple_pitch_type)) + geom_bar(position = "fill")
+ggplot(data = phil, aes(date, fill = simple_pitch_type)) + 
+  geom_bar(position = "fill") +
+  labs(x = "Date", y = "Pitch Types", 
+       title = "2015 Pitch Types by Start", fill = "Pitch") +
+  scale_fill_manual(values = c("#E31A1C", "#FB9A99", "#1F78B4", "#12496D"),
+                    labels = c("Changeup", "Curveball", "Cutter", "Four-seam")) +
+  theme(legend.position = "bottom",
+        legend.title = element_text(family = "Trebuchet MS", color="#666666", face="bold", size=15),
+        legend.text = element_text(family = "Trebuchet MS", color="#666666", face="bold", size=12),
+        plot.title = element_text(family = "Trebuchet MS", color="#666666", face="bold", size=30, hjust=0),
+        axis.title = element_text(family = "Trebuchet MS", color="#666666", face="bold", size=20),
+        axis.text.x = element_text(family = "Trebuchet MS", color="#666666", size=15),
+        axis.text.y = element_blank(),
+        strip.text = element_text(family = "Trebuchet MS", color="#666666", size=20))
+
 
 a <- phil %>% group_by(date) %>% summarize(FF = sum(simple_pitch_type == "FF")/n(),
                                            FC = sum(simple_pitch_type == "FC")/n(),
@@ -492,7 +570,23 @@ both_by_date <- rbind(phil %>% ungroup() %>% select(date, simple_pitch_type),
                       phil_16 %>% ungroup() %>% select(date, simple_pitch_type))
 
 
-ggplot(data = both_by_date, aes(date, fill = simple_pitch_type)) + geom_bar(position = "fill")
+ggplot(data = phil_16, aes(date, fill = simple_pitch_type)) + 
+  geom_bar(position = "fill") +
+  labs(x = "Date", y = "Pitch Types", 
+       title = "2016 Pitch Types by Start", fill = "Pitch") +
+  scale_fill_manual(values = c("#E31A1C", "#FB9A99", "#1F78B4", "#12496D"),
+                    labels = c("Changeup", "Curveball", "Cutter", "Four-seam")) +
+  theme(legend.position = "bottom",
+        legend.title = element_text(family = "Trebuchet MS", color="#666666", face="bold", size=15),
+        legend.text = element_text(family = "Trebuchet MS", color="#666666", face="bold", size=12),
+        plot.title = element_text(family = "Trebuchet MS", color="#666666", face="bold", size=30, hjust=0),
+        axis.title = element_text(family = "Trebuchet MS", color="#666666", face="bold", size=20),
+        axis.text.x = element_text(family = "Trebuchet MS", color="#666666", size=15),
+        axis.text.y = element_blank(),
+        strip.text = element_text(family = "Trebuchet MS", color="#666666", size=20))
+
+
+
 
 a <- phil %>% group_by(date) %>% summarize(FF = sum(simple_pitch_type == "FF")/n(),
                                            FC = sum(simple_pitch_type == "FC")/n(),
@@ -502,5 +596,3 @@ a <- phil %>% group_by(date) %>% summarize(FF = sum(simple_pitch_type == "FF")/n
   gather("Pitch", "Freq", 2:5) %>% ungroup()
 
 ggplot(a, aes(x = date, y = Freq, color = Pitch)) + geom_line(size = 1) + geom_point(size = 3)
-
-
